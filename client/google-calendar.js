@@ -2,7 +2,7 @@ console.log("KEN> google-calendar.js BEGIN");
 
 Accounts.ui.config({
   requestPermissions: {
-    google: ['profile', 'email', 'https://www.googleapis.com/auth/calendar']
+    google: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar']
   },
   requestOfflineToken: {
     google: true
@@ -14,74 +14,53 @@ if (Meteor.isClient) {
 
 	this.nsp = (function () {
 
-	  var calendar, myPrivateMethod;
+	var calendar, myPrivateMethod;
 
-	  var NSP_API_KEY = "AIzaSyBXMjg7iXRgtXfxdnQvupbb0RRYoGnqNpA";
-	  var accessToken = Meteor.user().services.google.accessToken;
+	var API_URL_CALENDARLIST = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+	var NSP_API_KEY = "AIzaSyBXMjg7iXRgtXfxdnQvupbb0RRYoGnqNpA";
+	var NSP_CALENDAR_NAME = "NSB Turnus";
 
-	  // A private counter variable
-	  myPrivateVar = 0;
-
-
-	  // A private function which logs any arguments
-	  gcal = function(method, url, data, resultOrErrorCallback) {
-	  	console.log(method + " to " + url + " ", NSP_API_KEY, accessToken);
-	  	Meteor.http.call(method, url, {
+	gcalOptions = function() {
+		return {
 	  		params: {key: NSP_API_KEY},
-	  		data: data,
 	  		headers: {
-				'Authorization': 'Bearer ' + accessToken
+				'Authorization': 'Bearer ' + Meteor.user().services.google.accessToken
 	  		}
-	  	},
-	  	new function(error, result) {
-	  		console.log("result", result, error);
-	  		return result;
-	  	});
+		}
+	};
+
+	gcal = function(method, url, resultOrErrorCallback, extraOptions) {
+		var options = gcalOptions();
+
+		if (extraOptions !== undefined) {
+			options = $.extend(options, extraOptions);
+		}
+
+	  	Meteor.http.call(method, url, options, resultOrErrorCallback);
+	};
 
 
-
-// TODO: Add User agent? Like:
-// X-JavaScript-User-Agent:  Google APIs Explorer
-
-/*
-    Meteor.http.post url, {
-      params: {key: 'INSERT-YOUR-API-KEY-HERE'},
-      data: event,
-      headers: {'Authorization': Auth }
-      }, 
-      (err, result)->
-        console.log result
-        return result.id
-*/
-	  	};
-
-	  	getAllCalendars = function() {
-	  		var url = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
-
-console.log("before call");
-
-		  	Meteor.http.get(url, {
-		  		params: {key: 'AIzaSyBXMjg7iXRgtXfxdnQvupbb0RRYoGnqNpA'},
-		  		headers: {
-					'Authorization': 'Bearer ' + accessToken
-		  		}
-		  	},
-		  	function(error, result) {
-		  		console.log("result", result, error);
-		  		return result;
-		  	});
-
-console.log("after call");
-
-/*
-	  		return gcal("GET", "https://www.googleapis.com/calendar/v3/users/me/calendarList", "", new function(error, result) {
+	//TODO: Only retrieve necessary fields
+	findNspCalendar = function() {
+		return gcal("GET", API_URL_CALENDARLIST, function(error, result) {
 	  			console.log("got calendars...", result, error);
-	  		});
-*/
-	  	};
 
+	  			if (result !== undefined) {
 
-	  return {
+	  				// TODO: Use fancier code to accomplish this ;)
+	  				$.each(result.data.items, function(index, item) {
+	  					if (item.summary === NSP_CALENDAR_NAME) {
+	  						console.log("FOUND IT!");
+	  						calendar = item.id;
+	  					}
+//	  					console.log("item", index, item);	
+	  				})
+	  			}
+	  		}
+	  		);
+	 };
+
+	return {
 
 	    // A public variable
 	    myPublicVar: "i am public",
@@ -90,12 +69,13 @@ console.log("after call");
 	    cal: function() {
 	    	if (calendar === undefined) {
 		    	console.log("retrieving nsp calendar...");
-		    	calendar = getAllCalendars();
+		    	findNspCalendar();
 	    	}
 
+console.log("CALENDAR ID: " + calendar)
 	    	return calendar;
 	    }
-	  };
+	};
 
 	})();
 
