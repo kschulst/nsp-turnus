@@ -17,8 +17,11 @@ if (Meteor.isClient) {
 	var calendar, myPrivateMethod;
 
 	var API_URL_CALENDARLIST = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+	var API_URL_CALENDARS = "https://www.googleapis.com/calendar/v3/calendars";
+
 	var NSP_API_KEY = "AIzaSyBXMjg7iXRgtXfxdnQvupbb0RRYoGnqNpA";
-	var NSP_CALENDAR_NAME = "NSB Turnus";
+	var NSP_CALENDAR_NAME = "NSP Turnus";
+	var NSP_CALENDAR_DESRIPTION = "Kalender brukt av NSP Turnus. Denne kalenderen vil bli overskrevet automatisk. Ikke gjør manuelle endringer her.";
 
 	gcalOptions = function() {
 		return {
@@ -36,7 +39,31 @@ if (Meteor.isClient) {
 			options = $.extend(options, extraOptions);
 		}
 
+		console.log("Options for calendar api", options);
+
 	  	Meteor.http.call(method, url, options, resultOrErrorCallback);
+	};
+
+	createNspCalendar = function() {
+		var data = {data: {
+			summary: "TEST_CALENDAR",
+			description: NSP_CALENDAR_DESRIPTION,
+			location: "Norway",
+			timeZone: "Europe/Oslo"
+		}};
+/*
+		var data = {
+		  "summary": "TEST_CALENDAR",
+  		  "description": "Kalender brukt av NSP Turnus. Denne kalenderen vil bli overskrevet automatisk. Ikke gjÃ¸r manuelle endringer her.",
+  		  "timeZone": "Europe/Oslo"
+		};
+*/
+		gcal("POST", API_URL_CALENDARS, function(error, result) {
+			console.log("created calendar", result, error);
+		}, data);
+
+	
+//	"Europe/Oslo"
 	};
 
 
@@ -50,7 +77,6 @@ if (Meteor.isClient) {
 	  				// TODO: Use fancier code to accomplish this ;)
 	  				$.each(result.data.items, function(index, item) {
 	  					if (item.summary === NSP_CALENDAR_NAME) {
-	  						console.log("FOUND IT!");
 	  						calendar = item.id;
 	  					}
 //	  					console.log("item", index, item);	
@@ -72,10 +98,15 @@ if (Meteor.isClient) {
 		    	findNspCalendar();
 	    	}
 
-console.log("CALENDAR ID: " + calendar)
 	    	return calendar;
+	    },
+
+
+	    test: function() {
+	    	createNspCalendar();
 	    }
 	};
+
 
 	})();
 
