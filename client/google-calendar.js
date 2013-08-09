@@ -107,6 +107,29 @@ if (Meteor.isClient) {
         return deferred.promise();
     };
 
+    createEvent = function() {
+        var deferred = $.Deferred()
+        data = {
+            data: {
+                summary: "navn på event",
+                description: "en beskrivelse",
+                start: {dateTime: "2013-08-12T13:00:00+02:00"},
+                end: {dateTime: "2013-08-12T15:45:00+02:00"}
+            }
+        };
+
+        gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", function(error, result) {
+            console.log("Created event (error if undef)", result);
+            if (result !== undefined) {
+                return deferred.resolve(result.data);
+            }
+
+            return deferred.reject();
+        }, data);
+
+        return deferred.promise();
+    }
+
 
     return {
     // ------------------------------------------------------------------------
@@ -114,40 +137,50 @@ if (Meteor.isClient) {
     // ------------------------------------------------------------------------
 
         cal: function() {
+            var deferred = $.Deferred();
+
             if (calendar) {
-                return calendar;
+                return deferred.resolve(calendar);
             }
-            else {
 
-                var deferred = $.Deferred();
-                findNspCalendarId().then(function(calendarId) {
-                    if (calendarId === undefined) {
-                        console.log("calendar not found, creating new....");
-                        createNspCalendar().then(function(error, result) {
-                            calendar = result.data;
-                            deferred.resolve(calendar);
-                        });
-                    }
-                    else {
-                        console.log("Calendar exists, fetching it....", calendarId);
-                        getNspCalendar(calendarId).then(function(result) {
-                            calendar = result;
-                            console.log("Fetched calendar", calendar);
-                            deferred.resolve(calendar);
-                        });
-                    }
+            findNspCalendarId().then(function(calendarId) {
+                if (calendarId === undefined) {
+                    console.log("calendar not found, creating new....");
+                    createNspCalendar().then(function(error, result) {
+                        calendar = result.data;
+                        deferred.resolve(calendar);
+                    });
+                }
+                else {
+                    console.log("Calendar exists, fetching it....", calendarId);
+                    getNspCalendar(calendarId).then(function(result) {
+                        calendar = result;
+                        console.log("Fetched calendar", calendar);
+                        deferred.resolve(calendar);
+                    });
+                }
 
-                }, function(error) {
-                    console.log("Error in nsp.initCal()", error);
-                    deferred.reject(error);
-                });
+            }, function(error) {
+                console.log("Error in nsp.initCal()", error);
+                deferred.reject(error);
+            });
 
-                return deferred.promise();
+            return deferred.promise();
+        },
 
-            }
+        createEventStuff: function() {
+            var deferred = $.Deferred();
+            this.cal().then(createEvent);
+//            createEvent();
+
+            return deferred.promise();
         }
+
+
 	};
 	})();
+
+
 
 
 }
