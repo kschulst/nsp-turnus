@@ -11,11 +11,11 @@ Accounts.ui.config({
 });
 
 if (Meteor.isClient) {
-
 	this.nsp = (function () {
 
-	var calendar, myPrivateMethod;
+	var myPrivateMethod;
 
+    var calendar;
 	var API_URL_CALENDARLIST = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
 	var API_URL_CALENDARS = "https://www.googleapis.com/calendar/v3/calendars";
 
@@ -32,82 +32,121 @@ if (Meteor.isClient) {
 		}
 	};
 
-	gcal = function(method, url, resultOrErrorCallback, extraOptions) {
-		var options = gcalOptions();
+    gcal = function(method, url, resultOrErrorCallback, extraOptions) {
+        var options = gcalOptions();
 
-		if (extraOptions !== undefined) {
-			options = $.extend(options, extraOptions);
-		}
+        if (extraOptions !== undefined) {
+            options = $.extend(options, extraOptions);
+        }
 
-		console.log("Options for calendar api", options);
+        console.log("Options for calendar api", options);
 
-	  	Meteor.http.call(method, url, options, resultOrErrorCallback);
-	};
+        Meteor.http.call(method, url, options, resultOrErrorCallback);
+    };
 
 	createNspCalendar = function() {
-		var data = {data: {
-			summary: "TEST_CALENDAR",
-			description: NSP_CALENDAR_DESRIPTION,
-			location: "Norway",
-			timeZone: "Europe/Oslo"
-		}};
-/*
-		var data = {
-		  "summary": "TEST_CALENDAR",
-  		  "description": "Kalender brukt av NSP Turnus. Denne kalenderen vil bli overskrevet automatisk. Ikke gjÃ¸r manuelle endringer her.",
-  		  "timeZone": "Europe/Oslo"
-		};
-*/
+		var deferred = $.Deferred(),
+            data = {
+                data: {
+                    summary: NSP_CALENDAR_NAME,
+                    description: NSP_CALENDAR_DESRIPTION,
+                    location: "Norway",
+                    timeZone: "Europe/Oslo"
+		        }
+            };
+
 		gcal("POST", API_URL_CALENDARS, function(error, result) {
-			console.log("created calendar", result, error);
+			if (result !== null) {
+				return deferred.resolve(result.data);
+			}
+
+            return deferred.reject();
 		}, data);
 
-	
-//	"Europe/Oslo"
+        return deferred.promise();
 	};
-
 
 	//TODO: Only retrieve necessary fields
-	findNspCalendar = function() {
-		return gcal("GET", API_URL_CALENDARLIST, function(error, result) {
-	  			console.log("got calendars...", result, error);
+    /**
+     *
+     * @returns calendarId of the calendar or "" if not found
+     */
+    findNspCalendarId = function() {
+        var deferred = $.Deferred();
 
-	  			if (result !== undefined) {
+        gcal("GET", API_URL_CALENDARLIST, function(error, result) {
+            console.log("GET", error, result);
+            if (result !== undefined) {
+                $.each(result.data.items, function(index, item) {
+                    if (item.summary === NSP_CALENDAR_NAME) {
+                        return deferred.resolve(item.id);
+                    }
+                })
 
-	  				// TODO: Use fancier code to accomplish this ;)
-	  				$.each(result.data.items, function(index, item) {
-	  					if (item.summary === NSP_CALENDAR_NAME) {
-	  						calendar = item.id;
-	  					}
-//	  					console.log("item", index, item);	
-	  				})
-	  			}
-	  		}
-	  		);
-	 };
+                return deferred.resolve();
+            }
 
-	return {
+            return deferred.reject();
+        });
 
-	    // A public variable
-	    myPublicVar: "i am public",
+        return deferred.promise();
+    };
 
-	    // A public function utilizing privates
-	    cal: function() {
-	    	if (calendar === undefined) {
-		    	console.log("retrieving nsp calendar...");
-		    	findNspCalendar();
-	    	}
+	getNspCalendar = function(id) {
+        var deferred = $.Deferred();
 
-	    	return calendar;
-	    },
+		gcal("GET", API_URL_CALENDARS + "/" + id, function(error, result) {
+			console.log("retrieved nsp calendar", error, result);
+			// TODO: Handle errors in a common way
+			if (result !== undefined) {
+				return deferred.resolve(result.data);
+			}
+            return deferred.reject();
+	    });
+
+        return deferred.promise();
+    };
 
 
-	    test: function() {
-	    	createNspCalendar();
-	    }
+    return {
+    // ------------------------------------------------------------------------
+    // Public stuff goes here
+    // ------------------------------------------------------------------------
+
+        cal: function() {
+            if (calendar) {
+                return calendar;
+            }
+            else {
+
+                var deferred = $.Deferred();
+                findNspCalendarId().then(function(calendarId) {
+                    if (calendarId === undefined) {
+                        console.log("calendar not found, creating new....");
+                        createNspCalendar().then(function(error, result) {
+                            calendar = result.data;
+                            deferred.resolve(calendar);
+                        });
+                    }
+                    else {
+                        console.log("Calendar exists, fetching it....", calendarId);
+                        getNspCalendar(calendarId).then(function(result) {
+                            calendar = result;
+                            console.log("Fetched calendar", calendar);
+                            deferred.resolve(calendar);
+                        });
+                    }
+
+                }, function(error) {
+                    console.log("Error in nsp.initCal()", error);
+                    deferred.reject(error);
+                });
+
+                return deferred.promise();
+
+            }
+        }
 	};
-
-
 	})();
 
 
