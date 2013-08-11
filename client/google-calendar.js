@@ -39,9 +39,29 @@ if (Meteor.isClient) {
             options = $.extend(options, extraOptions);
         }
 
-        console.log("Options for calendar api", options);
-
         Meteor.http.call(method, url, options, resultOrErrorCallback);
+    };
+
+    gcal2 = function(method, url, deferred, extraOptions) {
+        return gcal(method, url, function(error, result) {
+            if (result !== undefined) {
+                return deferred.resolve(result.data);
+            }
+            else {
+                return deferred.reject(error);
+            }
+        }, extraOptions);
+
+//        return deferred.promise();
+    };
+
+    promisedResult = function(deferred, error, result) {
+        if (result !== undefined) {
+            return deferred.resolve(result.data);
+        }
+        else {
+            return deferred.reject(error);
+        }
     };
 
 	createNspCalendar = function() {
@@ -56,11 +76,7 @@ if (Meteor.isClient) {
             };
 
 		gcal("POST", API_URL_CALENDARS, function(error, result) {
-			if (result !== null) {
-				return deferred.resolve(result.data);
-			}
-
-            return deferred.reject();
+            return promisedResult(deferred, error, result);
 		}, data);
 
         return deferred.promise();
@@ -75,7 +91,6 @@ if (Meteor.isClient) {
         var deferred = $.Deferred();
 
         gcal("GET", API_URL_CALENDARLIST, function(error, result) {
-            console.log("GET", error, result);
             if (result !== undefined) {
                 $.each(result.data.items, function(index, item) {
                     if (item.summary === NSP_CALENDAR_NAME) {
@@ -97,11 +112,7 @@ if (Meteor.isClient) {
 
 		gcal("GET", API_URL_CALENDARS + "/" + id, function(error, result) {
 			console.log("retrieved nsp calendar", error, result);
-			// TODO: Handle errors in a common way
-			if (result !== undefined) {
-				return deferred.resolve(result.data);
-			}
-            return deferred.reject();
+            return promisedResult(deferred, error, result);
 	    });
 
         return deferred.promise();
@@ -109,23 +120,15 @@ if (Meteor.isClient) {
 
     createEvent = function() {
         var deferred = $.Deferred()
-        data = {
+
+        return gcal2("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", deferred, {
             data: {
                 summary: "navn på event",
                 description: "en beskrivelse",
-                start: {dateTime: "2013-08-12T13:00:00+02:00"},
-                end: {dateTime: "2013-08-12T15:45:00+02:00"}
+                start: {dateTime: "2013-08-13T13:00:00+02:00"},
+                end: {dateTime: "2013-08-13T15:45:00+02:00"}
             }
-        };
-
-        gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", function(error, result) {
-            console.log("Created event (error if undef)", result);
-            if (result !== undefined) {
-                return deferred.resolve(result.data);
-            }
-
-            return deferred.reject();
-        }, data);
+        });
 
         return deferred.promise();
     }
@@ -171,7 +174,6 @@ if (Meteor.isClient) {
         createEventStuff: function() {
             var deferred = $.Deferred();
             this.cal().then(createEvent);
-//            createEvent();
 
             return deferred.promise();
         }
