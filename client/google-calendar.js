@@ -1,5 +1,3 @@
-console.log("KEN> google-calendar.js BEGIN");
-
 Accounts.ui.config({
   requestPermissions: {
     google: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar']
@@ -32,7 +30,7 @@ if (Meteor.isClient) {
 		}
 	};
 
-    gcal = function(method, url, resultOrErrorCallback, extraOptions) {
+    gcalHttpCall = function(method, url, resultOrErrorCallback, extraOptions) {
         var options = gcalOptions();
 
         if (extraOptions !== undefined) {
@@ -42,44 +40,30 @@ if (Meteor.isClient) {
         Meteor.http.call(method, url, options, resultOrErrorCallback);
     };
 
-    gcal2 = function(method, url, deferred, extraOptions) {
-        return gcal(method, url, function(error, result) {
+    gcal = function(method, url, extraOptions) {
+        var deferred = $.Deferred();
+
+        gcalHttpCall(method, url, function(error, result) {
             if (result !== undefined) {
-                return deferred.resolve(result.data);
+                return deferred.resolve(result);
             }
             else {
                 return deferred.reject(error);
             }
         }, extraOptions);
 
-//        return deferred.promise();
-    };
-
-    promisedResult = function(deferred, error, result) {
-        if (result !== undefined) {
-            return deferred.resolve(result.data);
-        }
-        else {
-            return deferred.reject(error);
-        }
+        return deferred.promise();
     };
 
 	createNspCalendar = function() {
-		var deferred = $.Deferred(),
-            data = {
-                data: {
-                    summary: NSP_CALENDAR_NAME,
-                    description: NSP_CALENDAR_DESRIPTION,
-                    location: "Norway",
-                    timeZone: "Europe/Oslo"
-		        }
-            };
-
-		gcal("POST", API_URL_CALENDARS, function(error, result) {
-            return promisedResult(deferred, error, result);
-		}, data);
-
-        return deferred.promise();
+		return gcal("POST", API_URL_CALENDARS, {
+            data: {
+                summary: NSP_CALENDAR_NAME,
+                description: NSP_CALENDAR_DESRIPTION,
+                location: "Norway",
+                timeZone: "Europe/Oslo"
+            }
+		});
 	};
 
 	//TODO: Only retrieve necessary fields
@@ -90,7 +74,7 @@ if (Meteor.isClient) {
     findNspCalendarId = function() {
         var deferred = $.Deferred();
 
-        gcal("GET", API_URL_CALENDARLIST, function(error, result) {
+        gcalHttpCall("GET", API_URL_CALENDARLIST, function(error, result) {
             if (result !== undefined) {
                 $.each(result.data.items, function(index, item) {
                     if (item.summary === NSP_CALENDAR_NAME) {
@@ -107,30 +91,33 @@ if (Meteor.isClient) {
         return deferred.promise();
     };
 
-	getNspCalendar = function(id) {
-        var deferred = $.Deferred();
+/*
+    findNspCalendarId = function() {
+        return gcal("GET", API_URL_CALENDARLIST).then(function(result) {
+            console.log("finding calendar result is here", result)
+            $.each(result.data.items, function(index, item) {
+                if (item.summary === NSP_CALENDAR_NAME) {
+                    return item.id;
+                }
+            })
 
-		gcal("GET", API_URL_CALENDARS + "/" + id, function(error, result) {
-			console.log("retrieved nsp calendar", error, result);
-            return promisedResult(deferred, error, result);
-	    });
-
-        return deferred.promise();
+            return; // really?
+        });
+    };
+*/
+    getNspCalendar = function(id) {
+        return gcal("GET", API_URL_CALENDARS + "/" + id);
     };
 
     createEvent = function() {
-        var deferred = $.Deferred()
-
-        return gcal2("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", deferred, {
+        return gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", {
             data: {
                 summary: "navn på event",
-                description: "en beskrivelse",
-                start: {dateTime: "2013-08-13T13:00:00+02:00"},
-                end: {dateTime: "2013-08-13T15:45:00+02:00"}
+                description: "en bezkrivelse",
+                start: {dateTime: "2013-08-15T13:00:00+02:00"},
+                end: {dateTime: "2013-08-15T15:45:00+02:00"}
             }
         });
-
-        return deferred.promise();
     }
 
 
@@ -149,7 +136,7 @@ if (Meteor.isClient) {
             findNspCalendarId().then(function(calendarId) {
                 if (calendarId === undefined) {
                     console.log("calendar not found, creating new....");
-                    createNspCalendar().then(function(error, result) {
+                    createNspCalendar().then(function(result) {
                         calendar = result.data;
                         deferred.resolve(calendar);
                     });
@@ -157,7 +144,7 @@ if (Meteor.isClient) {
                 else {
                     console.log("Calendar exists, fetching it....", calendarId);
                     getNspCalendar(calendarId).then(function(result) {
-                        calendar = result;
+                        calendar = result.data;
                         console.log("Fetched calendar", calendar);
                         deferred.resolve(calendar);
                     });
@@ -172,10 +159,7 @@ if (Meteor.isClient) {
         },
 
         createEventStuff: function() {
-            var deferred = $.Deferred();
             this.cal().then(createEvent);
-
-            return deferred.promise();
         }
 
 
@@ -186,61 +170,5 @@ if (Meteor.isClient) {
 
 
 }
-
-
-/*
-gapi.client.load('calendar', 'v3', new function() {
-  	console.log("KEN> GAPI LOADED");
-  });
-*/
-
-
-
-/*
-function load() {
-	console.log('KEN> in load');
-  that.gapi.client.setApiKey('AIzaSyBXMjg7iXRgtXfxdnQvupbb0RRYoGnqNpA');
-
-	console.log('KEN> after load');
-
-}
-
-load();
-*/
-/*
-gCal = 
-  insertEvent: (cliente, poblacion, texto, fecha)->
-    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
-    event=  {
-      summary: cliente
-      location: poblacion
-      description: texto
-      start:
-        "date": fecha
-      end:
-        "date": fecha
-      }
-    evento = JSON.stringify event
-    console.log evento
-    Auth = 'Bearer ' + Meteor.user().services.google.accessToken
-    Meteor.http.post url, {
-      params: {key: 'INSERT-YOUR-API-KEY-HERE'},
-      data: event,
-      headers: {'Authorization': Auth }
-      }, 
-      (err, result)->
-        console.log result
-        return result.id
-*/
-
-
-
-
-
-
-
-
-
-console.log("KEN> google-calendar.js END");
 
 
