@@ -66,50 +66,34 @@ if (Meteor.isClient) {
 		});
 	};
 
-	//TODO: Only retrieve necessary fields
     /**
+     * @returns calendarId of the calendar or empty string ("") if not found
      *
-     * @returns calendarId of the calendar or "" if not found
+     * TODO: Only retrieve necessary fields
      */
     findNspCalendarId = function() {
         var deferred = $.Deferred();
 
-        gcalHttpCall("GET", API_URL_CALENDARLIST, function(error, result) {
-            if (result !== undefined) {
-                $.each(result.data.items, function(index, item) {
-                    if (item.summary === NSP_CALENDAR_NAME) {
-                        return deferred.resolve(item.id);
-                    }
-                })
+        gcal("GET", API_URL_CALENDARLIST).then(function(result) {
+            console.log("finding calendar result is here", result)
+            $.each(result.data.items, function(index, item) {
+                if (item.summary === NSP_CALENDAR_NAME) {
+                    return deferred.resolve(item.id);
+                }
+            })
 
-                return deferred.resolve();
-            }
-
-            return deferred.reject();
+            return deferred.resolve();
         });
 
         return deferred.promise();
     };
 
-/*
-    findNspCalendarId = function() {
-        return gcal("GET", API_URL_CALENDARLIST).then(function(result) {
-            console.log("finding calendar result is here", result)
-            $.each(result.data.items, function(index, item) {
-                if (item.summary === NSP_CALENDAR_NAME) {
-                    return item.id;
-                }
-            })
-
-            return; // really?
-        });
-    };
-*/
     getNspCalendar = function(id) {
         return gcal("GET", API_URL_CALENDARS + "/" + id);
     };
 
-    createEvent = function() {
+/*
+    createEvent = function(event) {
         return gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", {
             data: {
                 summary: "navn på event",
@@ -117,6 +101,14 @@ if (Meteor.isClient) {
                 start: {dateTime: "2013-08-15T13:00:00+02:00"},
                 end: {dateTime: "2013-08-15T15:45:00+02:00"}
             }
+        });
+    }
+*/
+    createEvent = function(event) {
+        console.log("Calendar", calendar);
+
+        return gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", {
+            data: event
         });
     }
 
@@ -160,7 +152,40 @@ if (Meteor.isClient) {
 
         createEventStuff: function() {
             this.cal().then(createEvent);
+        },
+
+        createDuty: function() {
+            var duty = {
+                dutyNumber: "2310",
+                conductorNumber: "12345",
+                conductorName: "Bamble Bollerud",
+                startLocation: "Oslo S",
+                endLocation: "Oslo S",
+                start: "2013-08-15T08:00:00+02:00",
+                end: "2013-08-15T15:45:00+02:00",
+                timeInterval: "13:00-15:45",
+                tasks: [
+                    {
+                        from: "2013-08-15T09:30:00+02:00",
+                        to: "2013-08-15T11:00:00+02:00",
+                        description: "Joda",
+                        taskNumber: "",
+                        taskRole: "",
+                        url: ""
+                    }
+                ]
+            };
+
+            this.cal().then(function() {
+                createEvent({
+                    summary: duty.timeInterval + " (" + duty.dutyNumber + ")",
+                    description: "en bezkrivelse",
+                    start: {dateTime: duty.start},
+                    end: {dateTime: duty.end}
+                });
+            });
         }
+
 
 
 	};
