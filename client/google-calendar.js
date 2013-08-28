@@ -1,9 +1,3 @@
-Meteor.startup(function() {
-    Accounts.loginServiceConfiguration.remove({
-        service: "google"
-    });
-});
-
 Accounts.ui.config({
   requestPermissions: {
     google: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar']
