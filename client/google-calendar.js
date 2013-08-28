@@ -1,3 +1,9 @@
+Meteor.startup(function() {
+    Accounts.loginServiceConfiguration.remove({
+        service: "google"
+    });
+});
+
 Accounts.ui.config({
   requestPermissions: {
     google: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar']
@@ -5,7 +11,6 @@ Accounts.ui.config({
   requestOfflineToken: {
     google: true
   }
-/*  ,passwordSignupFields: 'USERNAME_AND_OPTIONAL_EMAIL'*/
 });
 
 if (Meteor.isClient) {
@@ -15,17 +20,20 @@ if (Meteor.isClient) {
 
     var calendar;
 	var API_URL_CALENDARLIST = "https://www.googleapis.com/calendar/v3/users/me/calendarList";
-	var API_URL_CALENDARS = "https://www.googleapis.com/calendar/v3/calendars";
+	var API_URL_CALENDARS = "https://content.googleapis.com/calendar/v3/calendars";
 
-	var NSP_API_KEY = "AIzaSyBXMjg7iXRgtXfxdnQvupbb0RRYoGnqNpA";
+	var NSP_API_KEY = "AIzaSyAp8jUdjYnJ5ze36yc5tTyT9HowWu97kAc";
 	var NSP_CALENDAR_NAME = "NSP Turnus";
 	var NSP_CALENDAR_DESRIPTION = "Kalender brukt av NSP Turnus. Denne kalenderen vil bli overskrevet automatisk. Ikke gjør manuelle endringer her.";
 
+
+
 	gcalOptions = function() {
 		return {
-	  		params: {key: NSP_API_KEY},
+//	  		params: {key: NSP_API_KEY},
 	  		headers: {
 				'Authorization': 'Bearer ' + Meteor.user().services.google.accessToken
+//                'Access-Control-Allow-Origin': '*'
 	  		}
 		}
 	};
@@ -37,7 +45,7 @@ if (Meteor.isClient) {
             options = $.extend(options, extraOptions);
         }
 
-        Meteor.http.call(method, url, options, resultOrErrorCallback);
+        HTTP.call(method, url, options, resultOrErrorCallback);
     };
 
     gcal = function(method, url, extraOptions) {
@@ -56,6 +64,7 @@ if (Meteor.isClient) {
     };
 
 	createNspCalendar = function() {
+        console.log("createNspCalendar");
 		return gcal("POST", API_URL_CALENDARS, {
             data: {
                 summary: NSP_CALENDAR_NAME,
@@ -72,10 +81,10 @@ if (Meteor.isClient) {
      * TODO: Only retrieve necessary fields
      */
     findNspCalendarId = function() {
+        console.log("findNspCalendarId");
         var deferred = $.Deferred();
 
         gcal("GET", API_URL_CALENDARLIST).then(function(result) {
-            console.log("finding calendar result is here", result)
             $.each(result.data.items, function(index, item) {
                 if (item.summary === NSP_CALENDAR_NAME) {
                     return deferred.resolve(item.id);
@@ -89,28 +98,26 @@ if (Meteor.isClient) {
     };
 
     getNspCalendar = function(id) {
+        console.log("getNspCalendar");
         return gcal("GET", API_URL_CALENDARS + "/" + id);
     };
 
-/*
     createEvent = function(event) {
-        return gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", {
-            data: {
-                summary: "navn på event",
-                description: "en bezkrivelse",
-                start: {dateTime: "2013-08-15T13:00:00+02:00"},
-                end: {dateTime: "2013-08-15T15:45:00+02:00"}
-            }
-        });
-    }
-*/
-    createEvent = function(event) {
-        console.log("Calendar", calendar);
-
+        console.log("createEvent");
         return gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", {
             data: event
         });
+    };
+
+    getEventsBetween = function(start, end) {
+        console.log("getEventsBetween " + start + " and " + end);
+        return gcal("GET", API_URL_CALENDARS + "/" + calendar.id + "/events?timeMin=" + start + "&timeMax=" + end);
     }
+
+    deleteEvent = function(eventId) {
+        console.log("deleteEvent");
+        return gcal("DELETE", API_URL_CALENDARS + "/" + calendar.id + "/events/" + eventId);
+    };
 
 
     return {
@@ -134,7 +141,7 @@ if (Meteor.isClient) {
                     });
                 }
                 else {
-                    console.log("Calendar exists, fetching it....", calendarId);
+                    console.log("Calendar exists, fetching it....");
                     getNspCalendar(calendarId).then(function(result) {
                         calendar = result.data;
                         console.log("Fetched calendar", calendar);
@@ -150,45 +157,34 @@ if (Meteor.isClient) {
             return deferred.promise();
         },
 
-        createEventStuff: function() {
-            this.cal().then(createEvent);
+        createDuty: function(duty) {
+            this.cal().then(function() {
+                createEvent(dutyToEvent(duty));
+            });
         },
 
-        createDuty: function() {
-            var duty = {
-                dutyNumber: "2310",
-                conductorNumber: "12345",
-                conductorName: "Bamble Bollerud",
-                startLocation: "Oslo S",
-                endLocation: "Oslo S",
-                start: "2013-08-15T08:00:00+02:00",
-                end: "2013-08-15T15:45:00+02:00",
-                timeInterval: "13:00-15:45",
-                tasks: [
-                    {
-                        from: "2013-08-15T09:30:00+02:00",
-                        to: "2013-08-15T11:00:00+02:00",
-                        description: "Joda",
-                        taskNumber: "",
-                        taskRole: "",
-                        url: ""
-                    }
-                ]
-            };
-
+        getEventStuff: function() {
             this.cal().then(function() {
-                createEvent({
-                    summary: duty.timeInterval + " (" + duty.dutyNumber + ")",
-                    description: "en bezkrivelse",
-                    start: {dateTime: duty.start},
-                    end: {dateTime: duty.end}
+                getEventsBetween("2013-09-01T00:00:00+02:00", "2013-12-01T00:00:00+02:00").then(function(result) {
+                   console.log("events between a and b", result.data.items.length);
+                });
+            });
+        },
+
+        // this.deleteEventsBetween(moment("2013-06-01").toISOString(), moment("2013-09-01").toISOString());
+        deleteEventsBetween: function(start, end) {
+            this.cal().then(function() {
+                getEventsBetween(start, end).then(function(result) {
+                    $.each(result.data.items, function(index, item) {
+                        deleteEvent(item.id);
+                        console.log("deleting event", item.id);
+                    })
+
+
                 });
             });
         }
-
-
-
-	};
+    };
 	})();
 
 
