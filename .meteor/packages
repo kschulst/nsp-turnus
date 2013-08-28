@@ -6,5 +6,12 @@
 autopublish
 insecure
 preserve-inputs
-accounts-google
 accounts-ui
+backbone
+accounts-google
+bootstrap-3
+momentjs
+npm
+standard-app-packages
+webapp
+http
