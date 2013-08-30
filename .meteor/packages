@@ -11,7 +11,8 @@ backbone
 accounts-google
 bootstrap-3
 momentjs
-npm
 standard-app-packages
 webapp
 http
+npm
+cheerio
