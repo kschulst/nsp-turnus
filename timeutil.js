@@ -12,3 +12,7 @@ humanDateAndTimeString = function(date) {
 hhMMIntervalString = function(start, end) {
     return hhMMString(start) + "-" + hhMMString(end);
 }
+
+isoDateString = function(isoDateString) {
+    return moment(isoDateString).toISOString()
+}
