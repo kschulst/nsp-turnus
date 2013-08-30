@@ -22,17 +22,16 @@ if (Meteor.isClient) {
 
 
 
-	gcalOptions = function() {
+	var gcalOptions = function() {
 		return {
 //	  		params: {key: NSP_API_KEY},
 	  		headers: {
 				'Authorization': 'Bearer ' + Meteor.user().services.google.accessToken
-//                'Access-Control-Allow-Origin': '*'
 	  		}
 		}
 	};
 
-    gcalHttpCall = function(method, url, resultOrErrorCallback, extraOptions) {
+    var gcalHttpCall = function(method, url, resultOrErrorCallback, extraOptions) {
         var options = gcalOptions();
 
         if (extraOptions !== undefined) {
@@ -42,7 +41,7 @@ if (Meteor.isClient) {
         HTTP.call(method, url, options, resultOrErrorCallback);
     };
 
-    gcal = function(method, url, extraOptions) {
+    var gcal = function(method, url, extraOptions) {
         var deferred = $.Deferred();
 
         gcalHttpCall(method, url, function(error, result) {
@@ -57,7 +56,7 @@ if (Meteor.isClient) {
         return deferred.promise();
     };
 
-	createNspCalendar = function() {
+	var createNspCalendar = function() {
         console.log("createNspCalendar");
 		return gcal("POST", API_URL_CALENDARS, {
             data: {
@@ -74,7 +73,7 @@ if (Meteor.isClient) {
      *
      * TODO: Only retrieve necessary fields
      */
-    findNspCalendarId = function() {
+    var findNspCalendarId = function() {
         console.log("findNspCalendarId");
         var deferred = $.Deferred();
 
@@ -91,28 +90,27 @@ if (Meteor.isClient) {
         return deferred.promise();
     };
 
-    getNspCalendar = function(id) {
+    var getNspCalendar = function(id) {
         console.log("getNspCalendar");
         return gcal("GET", API_URL_CALENDARS + "/" + id);
     };
 
-    createEvent = function(event) {
+    var createEvent = function(event) {
         console.log("createEvent");
         return gcal("POST", API_URL_CALENDARS + "/" + calendar.id + "/events", {
             data: event
         });
     };
 
-    getEventsBetween = function(start, end) {
+    var getEventsBetween = function(start, end) {
         console.log("getEventsBetween " + start + " and " + end);
         return gcal("GET", API_URL_CALENDARS + "/" + calendar.id + "/events?timeMin=" + start + "&timeMax=" + end);
     }
 
-    deleteEvent = function(eventId) {
+    var deleteEvent = function(eventId) {
         console.log("deleteEvent");
         return gcal("DELETE", API_URL_CALENDARS + "/" + calendar.id + "/events/" + eventId);
     };
-
 
     return {
     // ------------------------------------------------------------------------
@@ -165,7 +163,8 @@ if (Meteor.isClient) {
             });
         },
 
-        // this.deleteEventsBetween(moment("2013-06-01").toISOString(), moment("2013-09-01").toISOString());
+        // this.getEventsBetween(isoDateString("2013-08-01"), isoDateString("2013-08-31"));
+        // this.deleteEventsBetween(isoDateString("2013-06-01"), isoDateString("2013-09-01"));
         deleteEventsBetween: function(start, end) {
             this.cal().then(function() {
                 getEventsBetween(start, end).then(function(result) {
